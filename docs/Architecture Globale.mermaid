@@ -1,0 +1,31 @@
+graph TB
+subgraph "Phase 1 - Core"
+AUTH[Auth Service<br/>3001]
+end
+
+    subgraph "Phase 2 - Users"
+        USER[User Service<br/>3002]
+    end
+
+    subgraph "Phase 3 - Business"
+        TICKET[Ticket Service<br/>3003]
+        FILE[File Service<br/>3004]
+    end
+
+    subgraph "Phase 4 - Support"
+        NOTIF[Notification Service<br/>3005]
+        AUDIT[Audit Service<br/>3006]
+    end
+
+    AUTH --> USER
+    USER --> TICKET
+    TICKET --> FILE
+    TICKET --> NOTIF
+    ALL[All Services] --> AUDIT
+
+    style AUTH fill:#ff9999
+    style USER fill:#99ccff
+    style TICKET fill:#99ff99
+    style FILE fill:#ffcc99
+    style NOTIF fill:#ff99ff
+    style AUDIT fill:#cccccc

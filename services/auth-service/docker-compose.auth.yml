@@ -1,0 +1,130 @@
+# docker-compose.auth.yml
+version: '3.8'
+
+services:
+  # Service d'authentification
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - DATABASE_URL=postgresql://user:pass@auth-db:5432/auth_db
+      - REDIS_URL=redis://auth-redis:6379
+      - JWT_SECRET=dev-secret-change-in-production-very-long-key
+      - JWT_EXPIRES_IN=24h
+      - REFRESH_TOKEN_EXPIRES_IN=7d
+      - BCRYPT_ROUNDS=12
+      - MAX_LOGIN_ATTEMPTS=5
+      - LOCK_TIME=15
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX_REQUESTS=100
+      - CORS_ORIGIN=http://localhost:3000,http://localhost:3001
+      - ENABLE_KAFKA=false
+      - MOCK_EVENTS=true
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      auth-db:
+        condition: service_healthy
+      auth-redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - auth-network
+
+  # Base de données PostgreSQL
+  auth-db:
+    image: postgres:15-alpine
+    container_name: auth-db
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=auth_db
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=C
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    ports:
+      - "5401:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d auth_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - auth-network
+
+  # Cache Redis
+  auth-redis:
+    image: redis:7-alpine
+    container_name: auth-redis
+    command: redis-server --appendonly yes --requirepass redispass
+    environment:
+      - REDIS_PASSWORD=redispass
+    volumes:
+      - auth-redis-data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    ports:
+      - "6301:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - auth-network
+
+  # Adminer pour la gestion de la base de données (développement)
+  adminer:
+    image: adminer:latest
+    container_name: auth-adminer
+    ports:
+      - "8080:8080"
+    environment:
+      - ADMINER_DEFAULT_SERVER=auth-db
+    depends_on:
+      - auth-db
+    profiles:
+      - dev
+    networks:
+      - auth-network
+
+  # Redis Commander pour la gestion du cache (développement)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: auth-redis-commander
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:auth-redis:6379:0:redispass
+    depends_on:
+      - auth-redis
+    profiles:
+      - dev
+    networks:
+      - auth-network
+
+volumes:
+  auth-db-data:
+    driver: local
+  auth-redis-data:
+    driver: local
+
+networks:
+  auth-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# Configuration pour les différents environnements

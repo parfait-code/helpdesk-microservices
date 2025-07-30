@@ -1,0 +1,13 @@
+# docker-compose.override.yml (pour le développement local)
+version: '3.8'
+
+services:
+  auth-service:
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://user:pass@localhost:5401/auth_db
+      - REDIS_URL=redis://localhost:6301
+    volumes:
+      - .:/app:cached
+      - /app/node_modules
+    command: npm run dev

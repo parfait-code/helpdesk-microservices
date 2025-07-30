@@ -1,0 +1,28 @@
+graph LR
+    subgraph "Auth Service Architecture"
+        API[API REST<br/>:3001]
+        
+        subgraph "Core Components"
+            AUTH_CTRL[Auth Controller]
+            AUTH_SVC[Auth Service]
+            JWT[JWT Manager]
+            CRYPTO[Crypto Service]
+        end
+        
+        subgraph "Storage"
+            PG[(PostgreSQL<br/>Users)]
+            REDIS[(Redis<br/>Sessions)]
+        end
+        
+        subgraph "External"
+            KAFKA[Kafka Producer<br/>Mock in Dev]
+        end
+        
+        API --> AUTH_CTRL
+        AUTH_CTRL --> AUTH_SVC
+        AUTH_SVC --> JWT
+        AUTH_SVC --> CRYPTO
+        AUTH_SVC --> PG
+        JWT --> REDIS
+        AUTH_SVC --> KAFKA
+    end
