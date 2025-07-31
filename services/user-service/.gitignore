@@ -1,0 +1,23 @@
+# .dockerignore
+node_modules
+npm-debug.log
+logs/*.log
+.git
+.gitignore
+README.md
+.env
+.env.local
+.env.development
+.env.test
+coverage/
+.nyc_output
+.eslintrc.js
+.prettierrc
+jest.config.js
+*.test.js
+*.spec.js
+tests/
+docs/
+postman/
+.vscode/
+.idea/
