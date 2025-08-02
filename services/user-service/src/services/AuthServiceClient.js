@@ -65,7 +65,7 @@ class AuthServiceClient {
 
   async healthCheck() {
     try {
-      const response = await this.client.get('/auth/health');
+      const response = await this.client.get('/health');
       return response.status === 200;
     } catch (error) {
       return false;
