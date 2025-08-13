@@ -2,9 +2,13 @@
 const express = require('express');
 const profileRoutes = require('./profile');
 const adminRoutes = require('./admin');
+const internalRoutes = require('./internal');
 const authServiceClient = require('../services/AuthServiceClient');
 
 const router = express.Router();
+
+// Routes internes (sans authentification)
+router.use('/internal', internalRoutes);
 
 // Routes de profil utilisateur
 router.use('/users', profileRoutes);

@@ -85,6 +85,22 @@ class AuthRoutes {
       this.authController.me.bind(this.authController)
     );
 
+    // GET /auth/users/:userId - Informations utilisateur par ID (pour les microservices)
+    this.router.get('/users/:userId',
+      this.authMiddleware.authenticate(),
+      this.authMiddleware.checkTokenExpiry(),
+      this.authMiddleware.logAuthenticatedRequests(),
+      this.authController.getUserById.bind(this.authController)
+    );
+
+    // GET /auth/users/email/:email - Informations utilisateur par email (pour synchronisation)
+    this.router.get('/users/email/:email',
+      this.authMiddleware.authenticate(),
+      this.authMiddleware.checkTokenExpiry(),
+      this.authMiddleware.logAuthenticatedRequests(),
+      this.authController.getUserByEmail.bind(this.authController)
+    );
+
     // POST /auth/logout-all - Déconnexion de tous les appareils
     this.router.post('/logout-all',
       this.authMiddleware.authenticate(),

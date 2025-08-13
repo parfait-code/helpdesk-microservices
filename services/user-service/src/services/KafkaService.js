@@ -2,7 +2,6 @@
 const { Kafka } = require('kafkajs');
 const config = require('../config');
 const logger = require('../utils/logger');
-const profileService = require('./ProfileService');
 
 class KafkaService {
   constructor() {
@@ -71,7 +70,7 @@ class KafkaService {
     try {
       // S'abonner aux événements de l'auth-service
       await this.consumer.subscribe({ 
-        topics: ['auth.user.registered'], 
+        topics: ['user.registered'], 
         fromBeginning: false 
       });
 
@@ -99,7 +98,7 @@ class KafkaService {
 
   async handleMessage(topic, data) {
     switch (topic) {
-      case 'auth.user.registered':
+      case 'user.registered':
         await this.handleUserRegistered(data);
         break;
       default:
@@ -110,6 +109,9 @@ class KafkaService {
   async handleUserRegistered(userData) {
     try {
       logger.info('Processing user registration event', { userId: userData.userId });
+      
+      // Éviter la référence circulaire en important dynamiquement
+      const profileService = require('./ProfileService');
       
       // Créer automatiquement le profil utilisateur
       await profileService.createProfile({

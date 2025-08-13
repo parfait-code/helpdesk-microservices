@@ -18,13 +18,13 @@ class AuthServiceClient {
 
   async verifyToken(token) {
     try {
-      const response = await this.client.get('/auth/verify', {
+      const response = await this.client.get('/api/auth/verify', {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       return {
         success: true,
-        user: response.data.user
+        user: response.data.data.user
       };
     } catch (error) {
       logger.error('Auth verification failed:', {
@@ -46,13 +46,13 @@ class AuthServiceClient {
 
   async getUserById(userId, token) {
     try {
-      const response = await this.client.get(`/auth/users/${userId}`, {
+      const response = await this.client.get(`/api/auth/users/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       return {
         success: true,
-        user: response.data
+        user: response.data.data
       };
     } catch (error) {
       logger.error('Get user by ID failed:', error.message);

@@ -54,12 +54,12 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_is_revoked ON refresh_tokens(is_re
 
 -- Fonction pour mettre à jour automatiquement le champ updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS '
+RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = CURRENT_TIMESTAMP;
     RETURN NEW;
 END;
-' language plpgsql;
+$$ language plpgsql;
 
 -- Trigger pour auto-update du champ updated_at sur la table users
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;

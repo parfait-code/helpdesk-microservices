@@ -3,6 +3,7 @@ const { User, RefreshToken } = require('../models');
 const JwtService = require('./JwtService');
 const CryptoService = require('./CryptoService');
 const EventPublisher = require('./EventPublisher');
+const UserServiceClient = require('./UserServiceClient');
 
 class AuthService {
   constructor(database, redisClient) {
@@ -57,6 +58,19 @@ class AuthService {
         tokenPair.refreshTokenHash,
         tokenPair.expiresAt
       );
+
+      // Notifier le service utilisateur de façon asynchrone (ne pas bloquer l'inscription)
+      setImmediate(async () => {
+        try {
+          await UserServiceClient.notifyUserRegistration({
+            userId: user.id,
+            email: user.email,
+            timestamp: new Date().toISOString()
+          });
+        } catch (error) {
+          console.warn('Failed to notify user service:', error.message);
+        }
+      });
 
       return {
         accessToken: tokenPair.accessToken,
@@ -439,6 +453,74 @@ class AuthService {
     } catch (error) {
       console.error('Erreur lors du nettoyage:', error);
       return { expiredTokens: 0, cleanedCache: 0 };
+    }
+  }
+
+  // Vérification de token (pour les microservices)
+  async verifyToken(token) {
+    try {
+      console.log('🔍 Vérification token:', token ? token.substring(0, 50) + '...' : 'null');
+      
+      if (!token) {
+        console.log('❌ Token manquant');
+        return {
+          isValid: false,
+          error: 'Token manquant'
+        };
+      }
+
+      // Vérifier si le token est dans la liste noire
+      const isBlacklisted = await this.jwtService.isTokenBlacklisted(token);
+      console.log('🔍 Token blacklisté:', isBlacklisted);
+      
+      if (isBlacklisted) {
+        return {
+          isValid: false,
+          error: 'Token révoqué'
+        };
+      }
+
+      // Décoder et vérifier le token
+      let decoded;
+      try {
+        decoded = this.jwtService.verifyAccessToken(token);
+        console.log('✅ Token décodé:', decoded ? `userId: ${decoded.userId}` : 'null');
+      } catch (error) {
+        console.log('❌ Erreur décodage token:', error.message);
+        return {
+          isValid: false,
+          error: 'Token invalide ou expiré'
+        };
+      }
+
+      // Vérifier si l'utilisateur existe toujours et est actif
+      const user = await this.userModel.findById(decoded.userId);
+      console.log('🔍 Utilisateur trouvé:', user ? `email: ${user.email}, actif: ${user.is_active}` : 'null');
+      
+      if (!user || !user.is_active) {
+        return {
+          isValid: false,
+          error: 'Utilisateur introuvable ou désactivé'
+        };
+      }
+
+      console.log('✅ Token valide pour:', user.email);
+      return {
+        isValid: true,
+        user: {
+          userId: user.id,
+          email: user.email,
+          role: user.role
+        },
+        expiresAt: new Date(decoded.exp * 1000)
+      };
+
+    } catch (error) {
+      console.error('❌ Erreur vérification token:', error);
+      return {
+        isValid: false,
+        error: error.message || 'Erreur de vérification'
+      };
     }
   }
 }

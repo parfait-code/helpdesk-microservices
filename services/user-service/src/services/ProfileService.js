@@ -3,7 +3,6 @@ const UserProfile = require('../models/UserProfile');
 const UserActivity = require('../models/UserActivity');
 const redisClient = require('../config/redis');
 const fileServiceClient = require('./FileServiceClient');
-const kafkaService = require('./KafkaService');
 const { NotFoundError, ConflictError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const config = require('../config');
@@ -64,11 +63,18 @@ class ProfileService {
         }
       });
 
-      // Publier l'événement
-      await kafkaService.publishEvent('profile.created', {
-        userId: profile.userId,
-        email: profile.email,
-        createdAt: profile.createdAt
+      // Publier l'événement (éviter la référence circulaire avec KafkaService)
+      setImmediate(() => {
+        try {
+          const kafkaService = require('./KafkaService');
+          kafkaService.publishEvent('profile.created', {
+            userId: profile.userId,
+            email: profile.email,
+            createdAt: profile.createdAt
+          }).catch(err => logger.warn('Failed to publish profile.created event:', err));
+        } catch (error) {
+          logger.warn('Failed to load KafkaService:', error.message);
+        }
       });
 
       // Enregistrer l'activité

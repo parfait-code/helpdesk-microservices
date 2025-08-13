@@ -310,6 +310,79 @@ class AuthController {
     }
   }
 
+  // Obtenir un utilisateur par ID (pour les autres microservices)
+  async getUserById(req, res) {
+    try {
+      const { userId } = req.params;
+      
+      if (!userId) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID utilisateur requis'
+        });
+      }
+
+      const user = await this.authService.getCurrentUser(userId);
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'Utilisateur non trouvé'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: user
+      });
+
+    } catch (error) {
+      console.error('Erreur récupération utilisateur par ID:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des informations utilisateur'
+      });
+    }
+  }
+
+  // Obtenir des utilisateurs par email (pour synchronisation)
+  async getUserByEmail(req, res) {
+    try {
+      const { email } = req.params;
+      
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email requis'
+        });
+      }
+
+      const user = await this.authService.findUserByEmail(email);
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'Utilisateur non trouvé'
+        });
+      }
+
+      // Ne pas exposer le mot de passe
+      const { password_hash, ...userWithoutPassword } = user;
+
+      res.json({
+        success: true,
+        data: userWithoutPassword
+      });
+
+    } catch (error) {
+      console.error('Erreur récupération utilisateur par email:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la récupération des informations utilisateur'
+      });
+    }
+  }
+
   // Mot de passe oublié
   async forgotPassword(req, res) {
     try {
@@ -435,6 +508,64 @@ class AuthController {
       res.status(500).json({
         success: false,
         message: 'Erreur lors de la récupération des statistiques'
+      });
+    }
+  }
+
+  // Vérification de token (pour les autres microservices)
+  async verify(req, res) {
+    try {
+      console.log('🔍 Verify endpoint called');
+      const authHeader = req.headers.authorization;
+      console.log('🔍 Auth header:', authHeader ? authHeader.substring(0, 50) + '...' : 'null');
+      
+      if (!authHeader) {
+        console.log('❌ No auth header');
+        return res.status(401).json({
+          success: false,
+          message: 'Token d\'authentification manquant'
+        });
+      }
+
+      if (!authHeader.startsWith('Bearer ')) {
+        console.log('❌ Invalid auth header format');
+        return res.status(401).json({
+          success: false,
+          message: 'Format de token invalide'
+        });
+      }
+
+      const token = authHeader.substring(7);
+      console.log('🔍 Token extracted:', token ? token.substring(0, 50) + '...' : 'null');
+      
+      const verificationResult = await this.authService.verifyToken(token);
+      console.log('🔍 Verification result:', verificationResult);
+      
+      if (!verificationResult.isValid) {
+        console.log('❌ Token invalid:', verificationResult.error);
+        return res.status(401).json({
+          success: false,
+          message: verificationResult.error || 'Token invalide'
+        });
+      }
+
+      console.log('✅ Token valid');
+      res.json({
+        success: true,
+        data: {
+          user: verificationResult.user,
+          token: {
+            valid: true,
+            expiresAt: verificationResult.expiresAt
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Erreur vérification token:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la vérification du token'
       });
     }
   }

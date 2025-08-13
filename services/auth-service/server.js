@@ -183,13 +183,7 @@ class AuthServer {
       
       // Initialisation des tables
       try {
-        const client = await this.database.pg.connect();
-        const sqlPath = path.join(__dirname, 'scripts', 'init-db.sql');
-        const sqlScript = fs.readFileSync(sqlPath, 'utf8');
-        
-        await client.query(sqlScript);
-        client.release();
-        
+        await this.database.initializeTables();
         console.log('✅ Tables initialisées avec succès');
       } catch (error) {
         throw new Error(`Erreur initialisation tables: ${error.message}`);

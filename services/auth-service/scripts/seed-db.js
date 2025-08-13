@@ -1,4 +1,4 @@
-/ scripts/seed-db.js
+// scripts/seed-db.js
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const DatabaseManager = require('../src/config/database');

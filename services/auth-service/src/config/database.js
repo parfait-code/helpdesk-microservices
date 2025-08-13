@@ -119,7 +119,7 @@ class DatabaseManager {
 
       // Ajouter la contrainte de clé étrangère séparément
       await client.query(`
-        DO $ 
+        DO $$ 
         BEGIN
           IF NOT EXISTS (
             SELECT 1 FROM pg_constraint 
@@ -129,7 +129,7 @@ class DatabaseManager {
             ADD CONSTRAINT refresh_tokens_user_id_fkey 
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
           END IF;
-        END $
+        END $$
       `);
 
       // Créer les index pour la table refresh_tokens
@@ -144,12 +144,12 @@ class DatabaseManager {
       // Fonction pour mettre à jour updated_at automatiquement
       await client.query(`
         CREATE OR REPLACE FUNCTION update_updated_at_column()
-        RETURNS TRIGGER AS $
+        RETURNS TRIGGER AS $$
         BEGIN
           NEW.updated_at = CURRENT_TIMESTAMP;
           RETURN NEW;
         END;
-        $ language 'plpgsql'
+        $$ language 'plpgsql'
       `);
 
       // Trigger pour auto-update du champ updated_at
