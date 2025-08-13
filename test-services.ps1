@@ -52,7 +52,7 @@ Write-Host "========================" -ForegroundColor Yellow
 
 # Test Auth Service Health
 try {
-    $response = Invoke-SafeWebRequest -Uri "$AUTH_URL/api/v1/health"
+    $response = Invoke-SafeWebRequest -Uri "$AUTH_URL/health"
     Print-Result ($response.StatusCode -eq 200) "Auth Service Health Check"
 } catch {
     Print-Result $false "Auth Service Health Check"
@@ -60,7 +60,7 @@ try {
 
 # Test User Service Health  
 try {
-    $response = Invoke-SafeWebRequest -Uri "$USER_URL/api/v1/health"
+    $response = Invoke-SafeWebRequest -Uri "$USER_URL/health"
     Print-Result ($response.StatusCode -eq 200) "User Service Health Check"
 } catch {
     Print-Result $false "User Service Health Check"
@@ -68,7 +68,7 @@ try {
 
 # Test Ticket Service Health
 try {
-    $response = Invoke-SafeWebRequest -Uri "$TICKET_URL/api/v1/health"
+    $response = Invoke-SafeWebRequest -Uri "$TICKET_URL/health"
     Print-Result ($response.StatusCode -eq 200) "Ticket Service Health Check"
 } catch {
     Print-Result $false "Ticket Service Health Check"
@@ -85,13 +85,14 @@ $registerBody = @{
     username = "testuser_$timestamp"
     email = "test$timestamp@example.com"
     password = "SecurePass123!"
+    confirmPassword = "SecurePass123!"
     firstName = "Test"
     lastName = "User"
     role = "user"
 } | ConvertTo-Json
 
 try {
-    $registerResponse = Invoke-SafeWebRequest -Uri "$AUTH_URL/api/v1/auth/register" -Method "POST" -Body $registerBody
+    $registerResponse = Invoke-SafeWebRequest -Uri "$AUTH_URL/api/auth/register" -Method "POST" -Body $registerBody
     
     if ($registerResponse.StatusCode -eq 201) {
         $responseData = $registerResponse.Content | ConvertFrom-Json
@@ -113,7 +114,7 @@ try {
 # Verify Token
 try {
     $headers = @{ "Authorization" = "Bearer $ACCESS_TOKEN" }
-    $verifyResponse = Invoke-SafeWebRequest -Uri "$AUTH_URL/api/v1/auth/verify" -Method "POST" -Headers $headers
+    $verifyResponse = Invoke-SafeWebRequest -Uri "$AUTH_URL/api/auth/verify" -Method "POST" -Headers $headers
     Print-Result ($verifyResponse.StatusCode -eq 200) "Token Verification"
 } catch {
     Print-Result $false "Token Verification"
@@ -161,9 +162,7 @@ try {
         userId = $USER_ID
     } | ConvertTo-Json
     
-    $ticketResponse = Invoke-SafeWebRequest -Uri "$TICKET_URL/api/v1/tickets" -Method "POST" -Headers $headers -Body $ticketBody
-    
-    if ($ticketResponse.StatusCode -eq 201) {
+        $ticketResponse = Invoke-SafeWebRequest -Uri "$TICKET_URL/api/v1/tickets" -Method "POST" -Headers $headers -Body $ticketBody    if ($ticketResponse.StatusCode -eq 201) {
         $ticketData = $ticketResponse.Content | ConvertFrom-Json
         $TICKET_ID = $ticketData.data.id
         Print-Result $true "Create Ticket"

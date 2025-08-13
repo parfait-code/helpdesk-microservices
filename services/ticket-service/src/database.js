@@ -92,10 +92,19 @@ const closeConnection = async () => {
   }
 };
 
+// Fonction utilitaire pour les requêtes
+const query = async (text, params) => {
+  if (!pool) {
+    throw new Error('Database pool not initialized. Call initializeDatabase() first.');
+  }
+  return await pool.query(text, params);
+};
+
 module.exports = {
   initializeDatabase,
   testConnection,
   createTables,
   closeConnection,
-  getPool: () => pool
+  getPool: () => pool,
+  query
 };

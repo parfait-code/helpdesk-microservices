@@ -5,6 +5,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const config = require('./config');
 const database = require('./database');
+const routes = require('./routes');
 
 const app = express();
 
@@ -49,6 +50,9 @@ app.use('/api/', limiter);
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Routes principales
+app.use('/api', routes);
 
 // Routes principales
 app.get('/', (req, res) => {

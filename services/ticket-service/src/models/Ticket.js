@@ -1,10 +1,9 @@
 // src/models/Ticket.js
-const { Pool } = require('pg');
-const config = require('../config');
+const database = require('../database');
 
 class Ticket {
   constructor() {
-    this.pool = new Pool(config.database);
+    // Utilisation de la fonction query du module database
   }
 
   // Créer un nouveau ticket
@@ -27,22 +26,18 @@ class Ticket {
     `;
 
     const values = [title, description, priority, category, userId, assigneeId, status];
-    const result = await this.pool.query(query, values);
+    const result = await database.query(query, values);
     return result.rows[0];
   }
 
   // Récupérer un ticket par ID
   async findById(id) {
     const query = `
-      SELECT t.*, 
-             u.email as user_email, 
-             a.email as assignee_email
+      SELECT * 
       FROM tickets t
-      LEFT JOIN users u ON t.user_id = u.id
-      LEFT JOIN users a ON t.assignee_id = a.id
       WHERE t.id = $1
     `;
-    const result = await this.pool.query(query, [id]);
+    const result = await database.query(query, [id]);
     return result.rows[0];
   }
 
@@ -86,19 +81,15 @@ class Ticket {
 
     const query = `
       SELECT t.*, 
-             u.email as user_email, 
-             a.email as assignee_email,
              COUNT(*) OVER() as total_count
       FROM tickets t
-      LEFT JOIN users u ON t.user_id = u.id
-      LEFT JOIN users a ON t.assignee_id = a.id
       ${whereClause}
       ORDER BY t.created_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `;
 
     values.push(limit, offset);
-    const result = await this.pool.query(query, values);
+    const result = await database.query(query, values);
     
     return {
       tickets: result.rows,
@@ -138,14 +129,14 @@ class Ticket {
       RETURNING *
     `;
 
-    const result = await this.pool.query(query, values);
+    const result = await database.query(query, values);
     return result.rows[0];
   }
 
   // Supprimer un ticket
   async delete(id) {
     const query = 'DELETE FROM tickets WHERE id = $1 RETURNING *';
-    const result = await this.pool.query(query, [id]);
+    const result = await database.query(query, [id]);
     return result.rows[0];
   }
 
@@ -171,7 +162,7 @@ class Ticket {
       ORDER BY status, priority
     `;
 
-    const result = await this.pool.query(query);
+    const result = await database.query(query);
     return result.rows;
   }
 }
