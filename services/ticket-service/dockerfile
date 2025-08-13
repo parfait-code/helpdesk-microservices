@@ -1,9 +1,8 @@
-# Dockerfile
-FROM node:18-alpine
+# Dockerfile for ticket-service
+FROM node:18-alpine AS builder
 
-# Installer les dépendances système pour Sharp
+# Installer les dépendances système
 RUN apk add --no-cache \
-    vips-dev \
     build-base \
     python3 \
     make \
@@ -19,9 +18,6 @@ RUN npm ci --only=production && npm cache clean --force
 
 # Stage de production
 FROM node:18-alpine AS production
-
-# Installer vips pour Sharp
-RUN apk add --no-cache vips
 
 # Créer un utilisateur non-root
 RUN addgroup -g 1001 -S nodejs && \
@@ -41,12 +37,12 @@ RUN mkdir -p logs && chown nodejs:nodejs logs
 # Utiliser l'utilisateur non-root
 USER nodejs
 
-# Exposer le port
-EXPOSE 3002
+# Exposer le port 3003 pour ticket-service
+EXPOSE 3003
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3002/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
+    CMD node -e "require('http').get('http://localhost:3003/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
 
 # Commande de démarrage
 CMD ["npm", "start"]

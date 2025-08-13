@@ -1,5 +1,5 @@
 # docker-compose.services.yml
-# Configuration pour lancer auth-service et user-service ensemble
+# Configuration pour lancer auth-service, user-service et ticket-service ensemble
 services:
   auth-db:
     image: postgres:15-alpine
@@ -44,6 +44,29 @@ services:
     networks:
       - helpdesk-network
 
+  # Base de données PostgreSQL pour ticket-service
+  ticket-db:
+    image: postgres:15-alpine
+    container_name: helpdesk-ticket-db
+    environment:
+      - POSTGRES_USER=ticket
+      - POSTGRES_PASSWORD=ticketpass
+      - POSTGRES_DB=ticket_db
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=C
+    volumes:
+      - ticket-db-data:/var/lib/postgresql/data
+      - ./services/ticket-service/src/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5403:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticket -d ticket_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - helpdesk-network
+
   # Redis pour auth-service
   auth-redis:
     image: redis:7-alpine
@@ -66,6 +89,21 @@ services:
     command: redis-server --requirepass redispass
     ports:
       - "6302:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - helpdesk-network
+
+  # Redis pour ticket-service
+  ticket-redis:
+    image: redis:7-alpine
+    container_name: helpdesk-ticket-redis
+    command: redis-server --requirepass redispass
+    ports:
+      - "6303:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
@@ -141,10 +179,57 @@ services:
       - helpdesk-network
     restart: unless-stopped
 
+  # Service de tickets
+  ticket-service:
+    build:
+      context: ./services/ticket-service
+      dockerfile: dockerfile
+      target: production
+    container_name: helpdesk-ticket-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+      - DATABASE_URL=postgresql://ticket:ticketpass@ticket-db:5432/ticket_db
+      - REDIS_URL=redis://:redispass@ticket-redis:6379
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - AUTH_SERVICE_TIMEOUT=5000
+      - USER_SERVICE_URL=http://user-service:3002
+      - USER_SERVICE_TIMEOUT=5000
+      - FILE_SERVICE_URL=http://localhost:3004
+      - NOTIFICATION_SERVICE_URL=http://localhost:3005
+      - ENABLE_FILE_SERVICE=false
+      - MOCK_FILE_SERVICE=true
+      - ENABLE_NOTIFICATIONS=false
+      - MOCK_NOTIFICATIONS=true
+      - ENABLE_KAFKA=false
+      - KAFKA_BROKERS=localhost:9092
+      - CORS_ORIGIN=http://localhost:3000
+      - LOG_LEVEL=info
+      - RATE_LIMIT_MAX=100
+      - REDIS_TICKET_TTL=1800
+      - REDIS_TICKET_LIST_TTL=300
+      - REDIS_USER_INFO_TTL=3600
+    depends_on:
+      ticket-db:
+        condition: service_healthy
+      ticket-redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+    networks:
+      - helpdesk-network
+    restart: unless-stopped
+
 volumes:
   auth-db-data:
     driver: local
   user-db-data:
+    driver: local
+  ticket-db-data:
     driver: local
 
 networks:

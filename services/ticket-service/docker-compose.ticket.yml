@@ -1,116 +1,116 @@
-# docker-compose.user.yml
+# docker-compose.ticket.yml
 
 services:
-  user-service:
+  ticket-service:
     build: 
-      context: .  # ← CORRECTION : point au dossier courant
-      # target: production  ← SUPPRIMÉ car pas de multi-stage dans Dockerfile
-    container_name: user-service
+      context: .
+    container_name: ticket-service
     ports:
-      - "3002:3002"
+      - "3003:3003"
     environment:
       - NODE_ENV=development
-      - PORT=3002
-      - DATABASE_URL=postgresql://user:userpass@user-db:5432/user_db
-      - REDIS_URL=redis://user-redis:6379
+      - PORT=3003
+      - DATABASE_URL=postgresql://ticket:ticketpass@ticket-db:5432/ticket_db
+      - REDIS_URL=redis://:redispass@ticket-redis:6379
       - AUTH_SERVICE_URL=http://host.docker.internal:3001
-      - FILE_SERVICE_URL=http://localhost:3004
+      - USER_SERVICE_URL=http://host.docker.internal:3002
+      - FILE_SERVICE_URL=http://host.docker.internal:3004
+      - NOTIFICATION_SERVICE_URL=http://host.docker.internal:3005
       - ENABLE_FILE_SERVICE=false
       - MOCK_FILE_SERVICE=true
+      - ENABLE_NOTIFICATIONS=false
+      - MOCK_NOTIFICATIONS=true
       - ENABLE_KAFKA=false
       - KAFKA_BROKERS=kafka:9092
       - CORS_ORIGINS=http://localhost:3000,http://localhost:8080
       - LOG_LEVEL=debug
-      - UPLOAD_MAX_SIZE=5242880
       - RATE_LIMIT_MAX=100
-      - REDIS_PROFILE_TTL=3600
-      - REDIS_USER_LIST_TTL=300
+      - REDIS_TICKET_TTL=1800
+      - REDIS_TICKET_LIST_TTL=300
+      - REDIS_USER_INFO_TTL=3600
     depends_on:
-      user-db:
+      ticket-db:
         condition: service_healthy
-      user-redis:
+      ticket-redis:
         condition: service_healthy
     networks:
-      - user-network
+      - ticket-network
     volumes:
-      - user-logs:/app/logs
+      - ticket-logs:/app/logs
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3002/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/api/v1/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
     extra_hosts:
-      - "host.docker.internal:host-gateway"  # ← Pour accéder à l'auth-service sur l'hôte
+      - "host.docker.internal:host-gateway"
 
-  user-db:
+  ticket-db:
     image: postgres:15-alpine
-    container_name: user-db
+    container_name: ticket-db
     environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=userpass
-      - POSTGRES_DB=user_db
+      - POSTGRES_USER=ticket
+      - POSTGRES_PASSWORD=ticketpass
+      - POSTGRES_DB=ticket_db
       - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --lc-collate=C --lc-ctype=C
     volumes:
-      - user-db-data:/var/lib/postgresql/data
+      - ticket-db-data:/var/lib/postgresql/data
       - ./src/migrations:/docker-entrypoint-initdb.d
     ports:
-      - "5402:5432"
+      - "5403:5432"
     networks:
-      - user-network
+      - ticket-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d user_db"]
+      test: ["CMD-SHELL", "pg_isready -U ticket -d ticket_db"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
 
-  user-redis:
+  ticket-redis:
     image: redis:7-alpine
-    container_name: user-redis
-    command: redis-server --appendonly yes
+    container_name: ticket-redis
+    command: redis-server --appendonly yes --requirepass redispass
     volumes:
-      - user-redis-data:/data
+      - ticket-redis-data:/data
     ports:
-      - "6302:6379"
+      - "6303:6379"
     networks:
-      - user-network
+      - ticket-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "redispass", "ping"]
       interval: 10s
       timeout: 3s
       retries: 5
       start_period: 30s
 
   # Service de monitoring (optionnel)
-  user-adminer:
+  ticket-adminer:
     image: adminer:4.8.1
-    container_name: user-adminer
+    container_name: ticket-adminer
     ports:
-      - "8082:8080"
+      - "8083:8080"
     environment:
-      - ADMINER_DEFAULT_SERVER=user-db
+      - ADMINER_DEFAULT_SERVER=ticket-db
       - ADMINER_DESIGN=bootstrap
     networks:
-      - user-network
+      - ticket-network
     depends_on:
-      - user-db
-    restart: unless-stopped
-    profiles:
-      - tools
-
-networks:
-  user-network:
-    driver: bridge
-    name: user-network
+      - ticket-db
 
 volumes:
-  user-db-data:
-    name: user-db-data
-  user-redis-data:
-    name: user-redis-data
-  user-logs:
-    name: user-logs
+  ticket-db-data:
+    driver: local
+  ticket-redis-data:
+    driver: local
+  ticket-logs:
+    driver: local
+
+networks:
+  ticket-network:
+    driver: bridge
+    name: ticket-network

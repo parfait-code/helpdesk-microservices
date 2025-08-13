@@ -1,7 +1,27 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const compression = require('compression');
+const comp// Démarrage du serveur
+const startServer = async () => {
+  try {
+    // Initialiser la base de données
+    await initDatabase();
+    
+    // Démarrer le serveur
+    app.listen(config.port, () => {
+      console.log(`🎯 Ticket Service running on port ${config.port}`);
+      console.log(`📱 Environment: ${config.nodeEnv}`);
+      console.log(`🔗 Health Check: http://localhost:${config.port}/api/v1/health`);
+      console.log(`🔗 Service Info: http://localhost:${config.port}/`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error.message);
+    process.exit(1);
+  }
+};
+
+// Démarrer le serveur
+startServer(); = require('compression');
 const rateLimit = require('express-rate-limit');
 const config = require('./config');
 const database = require('./database');
@@ -112,23 +132,12 @@ app.use('*', (req, res) => {
 });
 
 // Démarrage du serveur
-const startServer = async () => {
-  try {
-    // Initialiser la base de données
-    await initDatabase();
-    
-    // Démarrer le serveur
-    app.listen(config.port, () => {
-      console.log(`🎯 Ticket Service running on port ${config.port}`);
-      console.log(`📱 Environment: ${config.nodeEnv}`);
-      console.log(`🔗 Health Check: http://localhost:${config.port}/api/v1/health`);
-      console.log(`🔗 Service Info: http://localhost:${config.port}/`);
-    });
-  } catch (error) {
-    console.error('❌ Failed to start server:', error.message);
-    process.exit(1);
-  }
-};
+app.listen(config.port, () => {
+  console.log(`� Ticket Service running on port ${config.port}`);
+  console.log(`📱 Environment: ${config.nodeEnv}`);
+  console.log(`🔗 Health Check: http://localhost:${config.port}/api/v1/health`);
+  console.log(`🔗 Service Info: http://localhost:${config.port}/`);
+});
 
 // Gestion des erreurs
 process.on('uncaughtException', (error) => {
@@ -140,21 +149,5 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
   process.exit(1);
 });
-
-// Gestion propre de l'arrêt
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  await database.closeConnection();
-  process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-  console.log('SIGINT received, shutting down gracefully');
-  await database.closeConnection();
-  process.exit(0);
-});
-
-// Démarrer le serveur
-startServer();
 
 module.exports = app;

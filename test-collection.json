@@ -1,0 +1,364 @@
+{
+  "info": {
+    "name": "Helpdesk Microservices - Test Collection",
+    "description": "Collection complète pour tester tous les services : Auth, User, Ticket",
+    "version": "1.0.0"
+  },
+  "environments": [
+    {
+      "name": "Local Development",
+      "values": [
+        {
+          "key": "auth_url",
+          "value": "http://localhost:3001"
+        },
+        {
+          "key": "user_url", 
+          "value": "http://localhost:3002"
+        },
+        {
+          "key": "ticket_url",
+          "value": "http://localhost:3003"
+        },
+        {
+          "key": "access_token",
+          "value": ""
+        },
+        {
+          "key": "refresh_token",
+          "value": ""
+        },
+        {
+          "key": "user_id",
+          "value": ""
+        },
+        {
+          "key": "ticket_id",
+          "value": ""
+        }
+      ]
+    }
+  ],
+  "requests": [
+    {
+      "name": "1. Health Check",
+      "folder": "System",
+      "method": "GET",
+      "url": "{{auth_url}}/api/v1/health",
+      "description": "Vérifier l'état des services"
+    },
+    {
+      "name": "2. User Health Check",
+      "folder": "System",
+      "method": "GET",
+      "url": "{{user_url}}/api/v1/health"
+    },
+    {
+      "name": "3. Ticket Health Check",
+      "folder": "System", 
+      "method": "GET",
+      "url": "{{ticket_url}}/api/v1/health"
+    },
+
+    {
+      "name": "1. Register User",
+      "folder": "Authentication",
+      "method": "POST",
+      "url": "{{auth_url}}/api/v1/auth/register",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "username": "testuser",
+        "email": "test@example.com", 
+        "password": "SecurePass123!",
+        "firstName": "Test",
+        "lastName": "User",
+        "role": "user"
+      },
+      "tests": [
+        "pm.test('Status is 201', () => pm.response.to.have.status(201));",
+        "pm.test('Response has tokens', () => {",
+        "  const response = pm.response.json();",
+        "  pm.expect(response.data.accessToken).to.exist;",
+        "  pm.environment.set('access_token', response.data.accessToken);",
+        "  pm.environment.set('refresh_token', response.data.refreshToken);",
+        "  pm.environment.set('user_id', response.data.user.id);",
+        "});"
+      ]
+    },
+    {
+      "name": "2. Login User",
+      "folder": "Authentication",
+      "method": "POST", 
+      "url": "{{auth_url}}/api/v1/auth/login",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "email": "test@example.com",
+        "password": "SecurePass123!"
+      },
+      "tests": [
+        "pm.test('Login successful', () => {",
+        "  const response = pm.response.json();",
+        "  pm.environment.set('access_token', response.data.accessToken);",
+        "  pm.environment.set('refresh_token', response.data.refreshToken);",
+        "  pm.environment.set('user_id', response.data.user.id);",
+        "});"
+      ]
+    },
+    {
+      "name": "3. Verify Token",
+      "folder": "Authentication",
+      "method": "POST",
+      "url": "{{auth_url}}/api/v1/auth/verify",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{access_token}}"
+      }
+    },
+    {
+      "name": "4. Refresh Token",
+      "folder": "Authentication", 
+      "method": "POST",
+      "url": "{{auth_url}}/api/v1/auth/refresh",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "refreshToken": "{{refresh_token}}"
+      }
+    },
+    {
+      "name": "5. Logout",
+      "folder": "Authentication",
+      "method": "POST", 
+      "url": "{{auth_url}}/api/v1/auth/logout",
+      "headers": {
+        "Authorization": "Bearer {{access_token}}"
+      }
+    },
+
+    {
+      "name": "1. Get My Profile",
+      "folder": "User Management",
+      "method": "GET",
+      "url": "{{user_url}}/api/v1/users/profile",
+      "headers": {
+        "Authorization": "Bearer {{access_token}}"
+      }
+    },
+    {
+      "name": "2. Update Profile", 
+      "folder": "User Management",
+      "method": "PUT",
+      "url": "{{user_url}}/api/v1/users/profile",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{access_token}}"
+      },
+      "body": {
+        "firstName": "Updated",
+        "lastName": "Name",
+        "phone": "+1234567890",
+        "bio": "Updated bio description"
+      }
+    },
+    {
+      "name": "3. Get User Activities",
+      "folder": "User Management",
+      "method": "GET",
+      "url": "{{user_url}}/api/v1/users/activities",
+      "headers": {
+        "Authorization": "Bearer {{access_token}}"
+      }
+    },
+    {
+      "name": "4. Get All Users (Admin)",
+      "folder": "User Management",
+      "method": "GET",
+      "url": "{{user_url}}/api/v1/admin/users?page=1&limit=10",
+      "headers": {
+        "Authorization": "Bearer {{access_token}}"
+      }
+    },
+
+    {
+      "name": "1. Create Ticket",
+      "folder": "Ticket Management",
+      "method": "POST",
+      "url": "{{ticket_url}}/api/v1/tickets",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{access_token}}"
+      },
+      "body": {
+        "title": "Bug dans l'application mobile",
+        "description": "L'application mobile crash lors de l'ouverture de la page profil. Steps to reproduce: 1. Ouvrir l'app 2. Aller sur profil 3. App crash",
+        "priority": "high",
+        "category": "bug",
+        "userId": "{{user_id}}"
+      },
+      "tests": [
+        "pm.test('Ticket created', () => {",
+        "  const response = pm.response.json();",
+        "  pm.environment.set('ticket_id', response.data.id);",
+        "});"
+      ]
+    },
+    {
+      "name": "2. Get All Tickets",
+      "folder": "Ticket Management",
+      "method": "GET",
+      "url": "{{ticket_url}}/api/v1/tickets?page=1&limit=10",
+      "headers": {
+        "Authorization": "Bearer {{access_token}}"
+      }
+    },
+    {
+      "name": "3. Get Ticket by ID",
+      "folder": "Ticket Management", 
+      "method": "GET",
+      "url": "{{ticket_url}}/api/v1/tickets/{{ticket_id}}",
+      "headers": {
+        "Authorization": "Bearer {{access_token}}"
+      }
+    },
+    {
+      "name": "4. Update Ticket",
+      "folder": "Ticket Management",
+      "method": "PUT",
+      "url": "{{ticket_url}}/api/v1/tickets/{{ticket_id}}",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{access_token}}"
+      },
+      "body": {
+        "status": "in_progress",
+        "priority": "urgent",
+        "description": "L'application mobile crash lors de l'ouverture de la page profil. Steps to reproduce: 1. Ouvrir l'app 2. Aller sur profil 3. App crash. UPDATE: Problème critique affectant tous les utilisateurs iOS."
+      }
+    },
+    {
+      "name": "5. Get User Tickets",
+      "folder": "Ticket Management",
+      "method": "GET", 
+      "url": "{{ticket_url}}/api/v1/tickets/user/{{user_id}}",
+      "headers": {
+        "Authorization": "Bearer {{access_token}}"
+      }
+    },
+    {
+      "name": "6. Get Ticket Stats",
+      "folder": "Ticket Management",
+      "method": "GET",
+      "url": "{{ticket_url}}/api/v1/tickets/stats",
+      "headers": {
+        "Authorization": "Bearer {{access_token}}"
+      }
+    },
+    {
+      "name": "7. Get Ticket Files",
+      "folder": "Ticket Management",
+      "method": "GET",
+      "url": "{{ticket_url}}/api/v1/tickets/{{ticket_id}}/files",
+      "headers": {
+        "Authorization": "Bearer {{access_token}}"
+      }
+    },
+
+    {
+      "name": "1. Create Support Request Ticket",
+      "folder": "Test Scenarios",
+      "method": "POST",
+      "url": "{{ticket_url}}/api/v1/tickets",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{access_token}}"
+      },
+      "body": {
+        "title": "Demande de support - Problème de connexion",
+        "description": "Je n'arrive plus à me connecter à mon compte depuis hier. J'ai essayé de réinitialiser mon mot de passe mais je ne reçois pas l'email.",
+        "priority": "medium",
+        "category": "support",
+        "userId": "{{user_id}}"
+      }
+    },
+    {
+      "name": "2. Create Feature Request", 
+      "folder": "Test Scenarios",
+      "method": "POST",
+      "url": "{{ticket_url}}/api/v1/tickets",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{access_token}}"
+      },
+      "body": {
+        "title": "Demande de fonctionnalité - Export PDF des rapports",
+        "description": "Il serait très utile d'avoir une fonctionnalité d'export PDF pour les rapports générés. Cela faciliterait le partage avec les clients.",
+        "priority": "low",
+        "category": "feature-request",
+        "userId": "{{user_id}}"
+      }
+    },
+    {
+      "name": "3. Create Critical Bug Report",
+      "folder": "Test Scenarios",
+      "method": "POST", 
+      "url": "{{ticket_url}}/api/v1/tickets",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{access_token}}"
+      },
+      "body": {
+        "title": "CRITIQUE - Perte de données lors de la sauvegarde",
+        "description": "URGENT : Les données des utilisateurs sont perdues lors de la sauvegarde automatique. Reproduit sur l'environnement de production. Impact : Tous les utilisateurs. Version affectée : v2.1.3",
+        "priority": "urgent",
+        "category": "bug",
+        "userId": "{{user_id}}"
+      }
+    },
+
+    {
+      "name": "1. Test Invalid Token",
+      "folder": "Error Handling",
+      "method": "GET",
+      "url": "{{ticket_url}}/api/v1/tickets",
+      "headers": {
+        "Authorization": "Bearer invalid_token_here"
+      }
+    },
+    {
+      "name": "2. Test Missing Required Fields",
+      "folder": "Error Handling",
+      "method": "POST",
+      "url": "{{ticket_url}}/api/v1/tickets",
+      "headers": {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer {{access_token}}"
+      },
+      "body": {
+        "title": "Ti"
+      }
+    },
+    {
+      "name": "3. Test Invalid UUID",
+      "folder": "Error Handling", 
+      "method": "GET",
+      "url": "{{ticket_url}}/api/v1/tickets/invalid-uuid",
+      "headers": {
+        "Authorization": "Bearer {{access_token}}"
+      }
+    },
+    {
+      "name": "4. Test Non-existent Ticket",
+      "folder": "Error Handling",
+      "method": "GET", 
+      "url": "{{ticket_url}}/api/v1/tickets/550e8400-e29b-41d4-a716-446655440000",
+      "headers": {
+        "Authorization": "Bearer {{access_token}}"
+      }
+    }
+  ]
+}
