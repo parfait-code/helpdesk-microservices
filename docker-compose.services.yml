@@ -112,6 +112,66 @@ services:
     networks:
       - helpdesk-network
 
+  # Base de données PostgreSQL pour file-service
+  file-db:
+    image: postgres:15-alpine
+    container_name: helpdesk-file-db
+    environment:
+      - POSTGRES_USER=file
+      - POSTGRES_PASSWORD=filepass
+      - POSTGRES_DB=file_db
+      - POSTGRES_INITDB_ARGS=--encoding=UTF-8 --locale=C
+    volumes:
+      - file-db-data:/var/lib/postgresql/data
+    ports:
+      - "5404:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U file -d file_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - helpdesk-network
+
+  # Redis pour file-service
+  file-redis:
+    image: redis:7-alpine
+    container_name: helpdesk-file-redis
+    command: redis-server --requirepass redispass
+    ports:
+      - "6304:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - helpdesk-network
+
+  # MinIO pour le stockage des fichiers
+  minio:
+    image: minio/minio:latest
+    container_name: helpdesk-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    environment:
+      - MINIO_ROOT_USER=minio
+      - MINIO_ROOT_PASSWORD=minio123
+      - MINIO_DEFAULT_BUCKETS=helpdesk-files
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - helpdesk-network
+
   # Service d'authentification
   auth-service:
     build:
@@ -197,10 +257,11 @@ services:
       - AUTH_SERVICE_TIMEOUT=5000
       - USER_SERVICE_URL=http://user-service:3002
       - USER_SERVICE_TIMEOUT=5000
-      - FILE_SERVICE_URL=http://localhost:3004
+      - FILE_SERVICE_URL=http://file-service:3004
+      - FILE_SERVICE_TIMEOUT=5000
       - NOTIFICATION_SERVICE_URL=http://localhost:3005
-      - ENABLE_FILE_SERVICE=false
-      - MOCK_FILE_SERVICE=true
+      - ENABLE_FILE_SERVICE=true
+      - MOCK_FILE_SERVICE=false
       - ENABLE_NOTIFICATIONS=false
       - MOCK_NOTIFICATIONS=true
       - ENABLE_KAFKA=false
@@ -224,12 +285,64 @@ services:
       - helpdesk-network
     restart: unless-stopped
 
+  # Service de gestion des fichiers
+  file-service:
+    build:
+      context: ./services/file-service
+      dockerfile: Dockerfile
+    container_name: helpdesk-file-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - DATABASE_URL=postgresql://file:filepass@file-db:5432/file_db
+      - REDIS_URL=redis://:redispass@file-redis:6379
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=minio
+      - MINIO_SECRET_KEY=minio123
+      - MINIO_USE_SSL=false
+      - MINIO_BUCKET_NAME=helpdesk-files
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - AUTH_SERVICE_TIMEOUT=5000
+      - TICKET_SERVICE_URL=http://ticket-service:3003
+      - TICKET_SERVICE_TIMEOUT=5000
+      - CORS_ORIGIN=http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003
+      - JWT_SECRET=eeyJhbGciOiJIUzI1NiJ9eyJSb2xlIjoiQWRtaW4iLCJJc3N1ZXIiOiJJc3N1ZXIiLCJVc2VybmFtZSI6IkphdmFJblVzZSIsImV4cCI6MTc1MzgxNzAwOCwiaWF0IjoxNzUzODE3MDA4fQ7FUll9vRaQmMwmFb6cBwciQN6J0VAZhG46UUtSwrY0
+      - MAX_FILE_SIZE=10485760
+      - MAX_FILES_PER_TICKET=10
+      - ALLOWED_MIME_TYPES=image/jpeg,image/png,image/gif,image/webp,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX_REQUESTS=100
+      - LOG_LEVEL=info
+    volumes:
+      - ./services/file-service/logs:/app/logs
+    depends_on:
+      file-db:
+        condition: service_healthy
+      file-redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      ticket-service:
+        condition: service_started
+    networks:
+      - helpdesk-network
+    restart: unless-stopped
+
 volumes:
   auth-db-data:
     driver: local
   user-db-data:
     driver: local
   ticket-db-data:
+    driver: local
+  file-db-data:
+    driver: local
+  minio-data:
     driver: local
 
 networks:
