@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test API Gateway - Helpdesk</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .endpoint {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+
+        .endpoint h3 {
+            margin: 0 0 10px 0;
+            color: #0066cc;
+        }
+
+        .url {
+            font-family: 'Courier New', monospace;
+            background: #e8e8e8;
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+            margin: 5px 0;
+        }
+
+        .test-btn {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .test-btn:hover {
+            background: #0052a3;
+        }
+
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+
+        .status.online {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.offline {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🚀 Test API Gateway - Helpdesk Microservices</h1>
+
+        <div class="endpoint">
+            <h3>📋 API Gateway Info</h3>
+            <div class="url" id="gateway-url">http://localhost:8080/</div>
+            <button class="test-btn" onclick="testEndpoint('/', 'gateway-result')">Tester</button>
+            <span class="status pending" id="gateway-status">En attente...</span>
+            <div class="result" id="gateway-result"></div>
+        </div>
+
+        <div class="endpoint">
+            <h3>🏥 Health Check</h3>
+            <div class="url" id="health-url">http://localhost:8080/health</div>
+            <button class="test-btn" onclick="testEndpoint('/health', 'health-result')">Tester</button>
+            <span class="status pending" id="health-status">En attente...</span>
+            <div class="result" id="health-result"></div>
+        </div>
+
+        <div class="endpoint">
+            <h3>🔐 Service d'Authentification</h3>
+            <div class="url" id="auth-url">http://localhost:8080/api/auth/health</div>
+            <button class="test-btn" onclick="testEndpoint('/api/auth/health', 'auth-result')">Tester</button>
+            <span class="status pending" id="auth-status">En attente...</span>
+            <div class="result" id="auth-result"></div>
+        </div>
+
+        <div class="endpoint">
+            <h3>👥 Service Utilisateur</h3>
+            <div class="url" id="users-url">http://localhost:8080/api/users/health</div>
+            <button class="test-btn" onclick="testEndpoint('/api/users/health', 'users-result')">Tester</button>
+            <span class="status pending" id="users-status">En attente...</span>
+            <div class="result" id="users-result"></div>
+        </div>
+
+        <div class="endpoint">
+            <h3>🎫 Service Ticket</h3>
+            <div class="url" id="tickets-url">http://localhost:8080/api/tickets/health</div>
+            <button class="test-btn" onclick="testEndpoint('/api/tickets/health', 'tickets-result')">Tester</button>
+            <span class="status pending" id="tickets-status">En attente...</span>
+            <div class="result" id="tickets-result"></div>
+        </div>
+
+        <div class="endpoint">
+            <h3>📁 Service Fichiers</h3>
+            <div class="url" id="files-url">http://localhost:8080/api/files/health</div>
+            <button class="test-btn" onclick="testEndpoint('/api/files/health', 'files-result')">Tester</button>
+            <span class="status pending" id="files-status">En attente...</span>
+            <div class="result" id="files-result"></div>
+        </div>
+
+        <div style="margin-top: 30px; text-align: center;">
+            <button class="test-btn" onclick="testAllEndpoints()"
+                style="background: #28a745; font-size: 16px; padding: 12px 24px;">
+                🧪 Tester tous les services
+            </button>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #e9ecef; border-radius: 5px;">
+            <h3>📖 Instructions pour le Frontend</h3>
+            <p><strong>Base URL unique :</strong> <code>http://localhost:8080</code></p>
+            <p><strong>Configuration :</strong></p>
+            <pre style="background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto;">// Dans votre fichier .env
+REACT_APP_API_URL=http://localhost:8080
+
+// Dans votre code JavaScript
+const apiClient = new ApiClient();
+const users = await apiClient.getUsers();          // → http://localhost:8080/api/users/
+const tickets = await apiClient.getTickets();      // → http://localhost:8080/api/tickets/
+const login = await apiClient.login(credentials);  // → http://localhost:8080/api/auth/login</pre>
+        </div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:8080';
+
+        async function testEndpoint(path, resultId) {
+            const resultElement = document.getElementById(resultId);
+            const statusElement = document.getElementById(resultId.replace('-result', '-status'));
+
+            statusElement.textContent = 'Test en cours...';
+            statusElement.className = 'status pending';
+            resultElement.textContent = 'Test en cours...';
+            resultElement.className = 'result';
+
+            try {
+                const response = await fetch(BASE_URL + path);
+                const data = await response.text();
+
+                if (response.ok) {
+                    resultElement.textContent = `✅ Succès (${response.status})\n\n${data}`;
+                    resultElement.className = 'result success';
+                    statusElement.textContent = 'En ligne';
+                    statusElement.className = 'status online';
+                } else {
+                    resultElement.textContent = `❌ Erreur HTTP ${response.status}\n\n${data}`;
+                    resultElement.className = 'result error';
+                    statusElement.textContent = 'Erreur';
+                    statusElement.className = 'status offline';
+                }
+            } catch (error) {
+                resultElement.textContent = `❌ Erreur de connexion:\n${error.message}`;
+                resultElement.className = 'result error';
+                statusElement.textContent = 'Hors ligne';
+                statusElement.className = 'status offline';
+            }
+        }
+
+        async function testAllEndpoints() {
+            const endpoints = [
+                { path: '/', resultId: 'gateway-result' },
+                { path: '/health', resultId: 'health-result' },
+                { path: '/api/auth/health', resultId: 'auth-result' },
+                { path: '/api/users/health', resultId: 'users-result' },
+                { path: '/api/tickets/health', resultId: 'tickets-result' },
+                { path: '/api/files/health', resultId: 'files-result' }
+            ];
+
+            for (const endpoint of endpoints) {
+                await testEndpoint(endpoint.path, endpoint.resultId);
+                // Petit délai pour éviter de surcharger les services
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }
+
+        // Test automatique au chargement de la page
+        window.addEventListener('load', () => {
+            setTimeout(testAllEndpoints, 1000);
+        });
+    </script>
+</body>
+
+</html>
