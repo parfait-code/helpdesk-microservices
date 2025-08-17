@@ -136,8 +136,8 @@ class AuthMiddleware {
   // Rate limiting pour l'authentification
   createAuthRateLimit() {
     return rateLimit({
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 5, // 5 tentatives par fenêtre
+      windowMs: 3 * 60 * 1000, // 15 minutes
+      max: 15, // 5 tentatives par fenêtre
       message: {
         success: false,
         message: 'Trop de tentatives de connexion. Réessayez dans 15 minutes.'
