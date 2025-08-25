@@ -2,9 +2,35 @@
 const express = require('express');
 const { body, param, query } = require('express-validator');
 const TicketController = require('../controllers/ticketController');
+const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 const ticketController = new TicketController();
+
+// Middleware local pour vérifier le rôle de l'utilisateur
+const ensureRole = (requiredRole) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Authentication required' });
+  }
+  if (req.user.role !== requiredRole) {
+    return res.status(403).json({ success: false, message: 'Insufficient permissions' });
+  }
+  next();
+};
+
+// Middleware pour autoriser l'utilisateur ciblé ou un admin
+const ensureSelfOrAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, message: 'Authentication required' });
+  }
+
+  const targetUserId = req.params.userId;
+  if (req.user.role === 'admin' || req.user.id === targetUserId) {
+    return next();
+  }
+
+  return res.status(403).json({ success: false, message: 'Insufficient permissions to access requested user tickets' });
+};
 
 // Validations
 const createTicketValidation = [
@@ -81,7 +107,8 @@ const paginationValidation = [
 ];
 
 // Routes principales des tickets
-router.post('/', createTicketValidation, ticketController.createTicket.bind(ticketController));
+// Créer un ticket - requiert un utilisateur authentifié avec le rôle `user`
+router.post('/', authenticate, ensureRole('user'), createTicketValidation, ticketController.createTicket.bind(ticketController));
 router.get('/', paginationValidation, ticketController.getAllTickets.bind(ticketController));
 router.get('/stats', ticketController.getTicketStats.bind(ticketController));
 router.get('/:id', idValidation, ticketController.getTicketById.bind(ticketController));
@@ -89,7 +116,10 @@ router.put('/:id', updateTicketValidation, ticketController.updateTicket.bind(ti
 router.delete('/:id', idValidation, ticketController.deleteTicket.bind(ticketController));
 
 // Routes pour les utilisateurs
+// Récupérer les tickets d'un utilisateur - requiert l'utilisateur (role: user)
 router.get('/user/:userId', 
+  authenticate,
+  ensureSelfOrAdmin,
   [param('userId').isUUID().withMessage('User ID must be a valid UUID'), ...paginationValidation],
   ticketController.getUserTickets.bind(ticketController)
 );
